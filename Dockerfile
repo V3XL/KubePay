@@ -24,4 +24,4 @@ COPY --from=build /app/out ./
 EXPOSE 80
 
 # Start the application
-ENTRYPOINT ["dotnet", "KubeSend.dll"]
+ENTRYPOINT ["dotnet", "KubePay.dll"]
