@@ -4,7 +4,6 @@ using KubePay.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
@@ -31,6 +30,8 @@ app.MapPost("/stripe/webhook", async (
     StripeWebhookHandler webhookHandler) =>
 {
     var json = await new StreamReader(request.Body).ReadToEndAsync();
+    var clientIp = request.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    
     try
     {
         var stripeEvent = EventUtility.ConstructEvent(
@@ -40,13 +41,45 @@ app.MapPost("/stripe/webhook", async (
             throwOnApiVersionMismatch: false
         );
 
+        logger.LogInformation(
+            "[{Timestamp}] [IP: {IpAddress}] [Event: {EventType}] [ID: {EventId}] Webhook received",
+            DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+            clientIp,
+            stripeEvent.Type,
+            stripeEvent.Id
+        );
+
         await webhookHandler.HandleEventAsync(stripeEvent);
+        
+        logger.LogInformation(
+            "[{Timestamp}] [IP: {IpAddress}] [Event: {EventType}] [ID: {EventId}] Webhook processed successfully",
+            DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+            clientIp,
+            stripeEvent.Type,
+            stripeEvent.Id
+        );
+        
         return Results.Ok();
     }
     catch (StripeException ex)
     {
-        logger.LogError(ex, "Error processing Stripe webhook");
+        logger.LogError(
+            "[{Timestamp}] [IP: {IpAddress}] [Error: Stripe] {Message}",
+            DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+            clientIp,
+            ex.Message
+        );
         return Results.BadRequest();
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(
+            "[{Timestamp}] [IP: {IpAddress}] [Error: Unexpected] {Message}",
+            DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+            clientIp,
+            ex.Message
+        );
+        return Results.StatusCode(500);
     }
 });
 
