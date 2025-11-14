@@ -29,6 +29,18 @@ public class StripeWebhookHandler
                 });
                 break;
 
+            case "customer.subscription.created":
+                var createdSubscription = stripeEvent.Data.Object as Subscription;
+                _logger.LogInformation($"Subscription created: {createdSubscription.Id}, Status: {createdSubscription.Status}");
+                await client.PostAsJsonAsync("api/provision", new 
+                { 
+                    subscriptionId = createdSubscription.Id,
+                    customerId = createdSubscription.CustomerId,
+                    status = createdSubscription.Status,
+                    priceId = createdSubscription.Items.Data[0].Price.Id
+                });
+                break;
+
             case "invoice.payment_succeeded":
                 var invoice = stripeEvent.Data.Object as Invoice;
                 await client.PostAsync("api/renew", null);
