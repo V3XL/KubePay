@@ -36,7 +36,8 @@ app.MapPost("/stripe/webhook", async (
         var stripeEvent = EventUtility.ConstructEvent(
             json,
             request.Headers["Stripe-Signature"],
-            webhookSecret
+            webhookSecret,
+            throwOnApiVersionMismatch: false
         );
 
         await webhookHandler.HandleEventAsync(stripeEvent);
